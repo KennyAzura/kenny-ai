@@ -7,11 +7,15 @@ interface MongoDBConnection {
   promise: Promise<Mongoose> | null;
 }
 
-let cached: MongoDBConnection = (global as any).mongoose;
-
-if (!cached) {
-  cached = (global as any).mongoose = { conn: null, promise: null };
+// Properly type the global extension
+declare global {
+  var mongoose: MongoDBConnection | undefined;
 }
+
+let cached: MongoDBConnection = global.mongoose || {
+  conn: null,
+  promise: null,
+};
 
 export const connectToDatabase = async () => {
   if (cached.conn) {
