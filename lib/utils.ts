@@ -1,4 +1,4 @@
-/* eslint-disable prefer-const */
+/* eslint-disable no-prototype-builtins */
 import { type ClassValue, clsx } from "clsx";
 import qs from "qs";
 import { twMerge } from "tailwind-merge";
@@ -132,30 +132,55 @@ export const download = (url: string, filename: string) => {
 };
 
 // DEEP MERGE OBJECTS
-export const deepMergeObjects = <T extends Record<string, any>>(
+type DeepMergeable = Record<string, unknown> | unknown[] | null | undefined;
+
+export const deepMergeObjects = <T extends DeepMergeable>(
   obj1: T,
-  obj2: T | null | undefined
+  obj2: T
 ): T => {
+  // Handle null/undefined cases
   if (obj2 === null || obj2 === undefined) {
     return obj1;
   }
+  if (obj1 === null || obj1 === undefined) {
+    return obj2;
+  }
 
-  let output = { ...obj2 };
+  // Handle arrays (concat them)
+  if (Array.isArray(obj1) && Array.isArray(obj2)) {
+    return [...obj1, ...obj2] as T;
+  }
 
-  for (let key in obj1) {
+  // Handle non-object cases
+  if (typeof obj1 !== "object" || typeof obj2 !== "object") {
+    return obj2;
+  }
+
+  // Create output object
+  const output = { ...obj2 } as Record<string, unknown>;
+
+  // Merge each property
+  for (const key in obj1) {
     if (Object.prototype.hasOwnProperty.call(obj1, key)) {
+      const obj1Value = (obj1 as Record<string, unknown>)[key];
+      const obj2Value = (obj2 as Record<string, unknown>)[key];
+
+      // Type guard for recursive call
       if (
-        obj1[key] &&
-        typeof obj1[key] === "object" &&
-        obj2[key] &&
-        typeof obj2[key] === "object"
+        typeof obj1Value === "object" ||
+        typeof obj2Value === "object" ||
+        Array.isArray(obj1Value) ||
+        Array.isArray(obj2Value)
       ) {
-        output[key] = deepMergeObjects(obj1[key], obj2[key]);
+        output[key] = deepMergeObjects(
+          obj1Value as DeepMergeable,
+          obj2Value as DeepMergeable
+        );
       } else {
-        output[key] = obj1[key];
+        output[key] = obj2Value !== undefined ? obj2Value : obj1Value;
       }
     }
   }
 
-  return output;
+  return output as T;
 };
